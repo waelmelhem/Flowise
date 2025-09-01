@@ -332,6 +332,51 @@ export class App {
 
         this.app.use('/', express.static(uiBuildPath))
 
+        // Handle iframe routes with API key validation
+        this.app.get('/iframe/canvas/:flowId', async (req: Request, res: Response) => {
+            const apiKey = req.query.apiKey as string
+            
+            if (!apiKey) {
+                return res.status(401).json({ error: 'API key is required' })
+            }
+
+            try {
+                // Validate API key
+                const mockReq = {
+                    ...req,
+                    headers: {
+                        ...req.headers,
+                        'Authorization': `Bearer ${apiKey}`
+                    }
+                }
+
+                const { isValid, workspaceId } = await validateAPIKey(mockReq)
+                
+                if (!isValid) {
+                    return res.status(401).json({ error: 'Invalid API key' })
+                }
+
+                // Verify the flow exists and user has access to it
+                const chatflow = await this.AppDataSource.getRepository(ChatFlow).findOneBy({
+                    id: req.params.flowId
+                })
+
+                if (!chatflow) {
+                    return res.status(404).json({ error: 'Flow not found' })
+                }
+
+                // Check if the flow belongs to the same workspace as the API key
+                if (chatflow.workspaceId !== workspaceId) {
+                    return res.status(403).json({ error: 'Access denied to this flow' })
+                }
+
+                // Serve the React app with iframe mode
+                res.sendFile(uiHtmlPath)
+            } catch (error) {
+                res.status(500).json({ error: 'Internal server error' })
+            }
+        })
+
         // All other requests not handled will return React app
         this.app.use((req: Request, res: Response) => {
             res.sendFile(uiHtmlPath)

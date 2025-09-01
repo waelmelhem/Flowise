@@ -1,0 +1,25 @@
+/* Iframe-specific styles */
+.iframe-mode {
+    height: 100vh;
+    overflow: hidden;
+}
+
+.iframe-mode .reactflow-parent-wrapper {
+    height: 100vh;
+}
+
+.iframe-mode .reactflow-wrapper {
+    height: 100vh;
+}
+
+/* Hide unnecessary UI elements in iframe mode */
+.iframe-mode .react-flow__attribution {
+    display: none;
+}
+
+/* Ensure proper iframe styling */
+body.iframe-mode {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}

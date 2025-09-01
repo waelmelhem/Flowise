@@ -14,6 +14,7 @@ import ConfirmContextProvider from '@/store/context/ConfirmContextProvider'
 import { ReactFlowContext } from '@/store/context/ReactFlowContext'
 import { ConfigProvider } from '@/store/context/ConfigContext'
 import { ErrorProvider } from '@/store/context/ErrorContext'
+import { IframeProvider } from '@/store/context/IframeContext'
 
 const container = document.getElementById('root')
 const root = createRoot(container)
@@ -25,11 +26,13 @@ root.render(
                 <SnackbarProvider>
                     <ConfigProvider>
                         <ErrorProvider>
-                            <ConfirmContextProvider>
-                                <ReactFlowContext>
-                                    <App />
-                                </ReactFlowContext>
-                            </ConfirmContextProvider>
+                            <IframeProvider>
+                                <ConfirmContextProvider>
+                                    <ReactFlowContext>
+                                        <App />
+                                    </ReactFlowContext>
+                                </ConfirmContextProvider>
+                            </IframeProvider>
                         </ErrorProvider>
                     </ConfigProvider>
                 </SnackbarProvider>

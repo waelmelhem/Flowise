@@ -3,7 +3,7 @@ import ReactFlow, { addEdge, Controls, Background, useNodesState, useEdgesState 
 import 'reactflow/dist/style.css'
 
 import { useDispatch, useSelector } from 'react-redux'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import {
     REMOVE_DIRTY,
     SET_DIRTY,
@@ -64,6 +64,7 @@ const Canvas = () => {
     const theme = useTheme()
     const navigate = useNavigate()
     const { hasAssignedWorkspace } = useAuth()
+    const [searchParams] = useSearchParams()
 
     const { state } = useLocation()
     const templateFlowData = state ? state.templateFlowData : ''
@@ -73,6 +74,10 @@ const Canvas = () => {
         URLpath[URLpath.length - 1] === 'canvas' || URLpath[URLpath.length - 1] === 'agentcanvas' ? '' : URLpath[URLpath.length - 1]
     const isAgentCanvas = URLpath.includes('agentcanvas') ? true : false
     const canvasTitle = URLpath.includes('agentcanvas') ? 'Agent' : 'Chatflow'
+    
+    // Check if we're in iframe mode
+    const isIframeMode = searchParams.get('iframe') === 'true'
+    const iframeApiKey = searchParams.get('apikey')
 
     const { confirm } = useConfirm()
 
@@ -493,13 +498,54 @@ const Canvas = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [canvasDataStore.chatflow])
 
+    // Custom API client for iframe mode
+    const iframeApiClient = isIframeMode && iframeApiKey ? {
+        get: async (url) => {
+            const response = await fetch(`/api/v1${url}`, {
+                headers: {
+                    'Authorization': `Bearer ${iframeApiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+            return { data: await response.json() }
+        }
+    } : null
+
+    // Handle iframe mode chatflow loading
+    useEffect(() => {
+        if (isIframeMode && iframeApiKey && chatflowId) {
+            const getChatflow = async () => {
+                try {
+                    const response = await iframeApiClient.get(`/chatflows/${chatflowId}`)
+                    const chatflowData = response.data
+                    const initialFlow = chatflowData.flowData ? JSON.parse(chatflowData.flowData) : {}
+                    setLasUpdatedDateTime(chatflowData.updatedDate)
+                    setNodes(initialFlow.nodes || [])
+                    setEdges(initialFlow.edges || [])
+                    setChatflowName(chatflowData.name)
+                    setChatflow(chatflowData)
+                    
+                    // Notify parent window that canvas is loaded
+                    window.parent.postMessage({ type: 'CANVAS_LOADED' }, '*')
+                } catch (error) {
+                    console.error('Error loading chatflow in iframe mode:', error)
+                    window.parent.postMessage({ type: 'CANVAS_ERROR', error: error.message }, '*')
+                }
+            }
+            getChatflow()
+        }
+    }, [isIframeMode, iframeApiKey, chatflowId])
+
     // Initialization
     useEffect(() => {
         setIsSyncNodesButtonEnabled(false)
         setIsUpsertButtonEnabled(false)
-        if (chatflowId) {
+        if (chatflowId && !isIframeMode) {
             getSpecificChatflowApi.request(chatflowId)
-        } else {
+        } else if (!chatflowId && !isIframeMode) {
             if (localStorage.getItem('duplicatedFlowData')) {
                 handleLoadFlow(localStorage.getItem('duplicatedFlowData'))
                 setTimeout(() => localStorage.removeItem('duplicatedFlowData'), 0)
@@ -515,7 +561,9 @@ const Canvas = () => {
             })
         }
 
-        getNodesApi.request()
+        if (!isIframeMode) {
+            getNodesApi.request()
+        }
 
         // Clear dirty state before leaving and remove any ongoing test triggers and webhooks
         return () => {
@@ -523,7 +571,7 @@ const Canvas = () => {
         }
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [isIframeMode])
 
     useEffect(() => {
         setCanvasDataStore(canvas)
@@ -560,26 +608,28 @@ const Canvas = () => {
     return (
         <>
             <Box>
-                <AppBar
-                    enableColorOnDark
-                    position='fixed'
-                    color='inherit'
-                    elevation={1}
-                    sx={{
-                        bgcolor: theme.palette.background.default
-                    }}
-                >
-                    <Toolbar>
-                        <CanvasHeader
-                            chatflow={chatflow}
-                            handleSaveFlow={handleSaveFlow}
-                            handleDeleteFlow={handleDeleteFlow}
-                            handleLoadFlow={handleLoadFlow}
-                            isAgentCanvas={isAgentCanvas}
-                        />
-                    </Toolbar>
-                </AppBar>
-                <Box sx={{ pt: '70px', height: '100vh', width: '100%' }}>
+                {!isIframeMode && (
+                    <AppBar
+                        enableColorOnDark
+                        position='fixed'
+                        color='inherit'
+                        elevation={1}
+                        sx={{
+                            bgcolor: theme.palette.background.default
+                        }}
+                    >
+                        <Toolbar>
+                            <CanvasHeader
+                                chatflow={chatflow}
+                                handleSaveFlow={handleSaveFlow}
+                                handleDeleteFlow={handleDeleteFlow}
+                                handleLoadFlow={handleLoadFlow}
+                                isAgentCanvas={isAgentCanvas}
+                            />
+                        </Toolbar>
+                    </AppBar>
+                )}
+                <Box sx={{ pt: isIframeMode ? 0 : '70px', height: '100vh', width: '100%' }}>
                     <div className='reactflow-parent-wrapper'>
                         <div className='reactflow-wrapper' ref={reactFlowWrapper}>
                             <ReactFlow
@@ -593,14 +643,17 @@ const Canvas = () => {
                                 onNodeDragStop={setDirty}
                                 nodeTypes={nodeTypes}
                                 edgeTypes={edgeTypes}
-                                onConnect={onConnect}
+                                onConnect={isIframeMode ? null : onConnect}
                                 onInit={setReactFlowInstance}
                                 fitView
-                                deleteKeyCode={canvas.canvasDialogShow ? null : ['Delete']}
+                                deleteKeyCode={isIframeMode || canvas.canvasDialogShow ? null : ['Delete']}
                                 minZoom={0.1}
                                 snapGrid={[25, 25]}
                                 snapToGrid={isSnappingEnabled}
                                 className='chatflow-canvas'
+                                nodesDraggable={!isIframeMode}
+                                nodesConnectable={!isIframeMode}
+                                elementsSelectable={true}
                             >
                                 <Controls
                                     className={customization.isDarkMode ? 'dark-mode-controls' : ''}
@@ -623,8 +676,8 @@ const Canvas = () => {
                                     </button>
                                 </Controls>
                                 <Background color='#aaa' gap={16} />
-                                <AddNodes isAgentCanvas={isAgentCanvas} nodesData={getNodesApi.data} node={selectedNode} />
-                                {isSyncNodesButtonEnabled && (
+                                {!isIframeMode && <AddNodes isAgentCanvas={isAgentCanvas} nodesData={getNodesApi.data} node={selectedNode} />}
+                                {!isIframeMode && isSyncNodesButtonEnabled && (
                                     <Fab
                                         sx={{
                                             left: 40,
@@ -644,13 +697,13 @@ const Canvas = () => {
                                         <IconRefreshAlert />
                                     </Fab>
                                 )}
-                                {isUpsertButtonEnabled && <VectorStorePopUp chatflowid={chatflowId} />}
-                                <ChatPopUp isAgentCanvas={isAgentCanvas} chatflowid={chatflowId} />
+                                {!isIframeMode && isUpsertButtonEnabled && <VectorStorePopUp chatflowid={chatflowId} />}
+                                {!isIframeMode && <ChatPopUp isAgentCanvas={isAgentCanvas} chatflowid={chatflowId} />}
                             </ReactFlow>
                         </div>
                     </div>
                 </Box>
-                <ConfirmDialog />
+                {!isIframeMode && <ConfirmDialog />}
             </Box>
         </>
     )

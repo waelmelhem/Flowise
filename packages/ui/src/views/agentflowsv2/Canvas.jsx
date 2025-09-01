@@ -68,6 +68,7 @@ const AgentflowCanvas = () => {
     const theme = useTheme()
     const navigate = useNavigate()
     const customization = useSelector((state) => state.customization)
+    const [searchParams] = useSearchParams()
 
     const { state } = useLocation()
     const templateFlowData = state ? state.templateFlowData : ''
@@ -76,6 +77,10 @@ const AgentflowCanvas = () => {
     const chatflowId =
         URLpath[URLpath.length - 1] === 'canvas' || URLpath[URLpath.length - 1] === 'agentcanvas' ? '' : URLpath[URLpath.length - 1]
     const canvasTitle = URLpath.includes('agentcanvas') ? 'Agent' : 'Chatflow'
+    
+    // Check if we're in iframe mode
+    const isIframeMode = searchParams.get('iframe') === 'true'
+    const iframeApiKey = searchParams.get('apikey')
 
     const { confirm } = useConfirm()
 

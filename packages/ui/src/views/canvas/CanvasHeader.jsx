@@ -5,10 +5,10 @@ import { useEffect, useRef, useState } from 'react'
 
 // material-ui
 import { useTheme } from '@mui/material/styles'
-import { Avatar, Box, ButtonBase, Typography, Stack, TextField, Button } from '@mui/material'
+import { Avatar, Box, ButtonBase, Typography, Stack, TextField, Button, ToggleButton, ToggleButtonGroup } from '@mui/material'
 
 // icons
-import { IconSettings, IconChevronLeft, IconDeviceFloppy, IconPencil, IconCheck, IconX, IconCode } from '@tabler/icons-react'
+import { IconSettings, IconChevronLeft, IconDeviceFloppy, IconPencil, IconCheck, IconX, IconCode, IconEdit, IconEye } from '@tabler/icons-react'
 
 // project imports
 import Settings from '@/views/settings'
@@ -34,7 +34,7 @@ import { closeSnackbar as closeSnackbarAction, enqueueSnackbar as enqueueSnackba
 
 // ==============================|| CANVAS HEADER ||============================== //
 
-const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow, handleDeleteFlow, handleLoadFlow }) => {
+const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow, handleDeleteFlow, handleLoadFlow, viewMode, onViewModeChange }) => {
     const theme = useTheme()
     const dispatch = useDispatch()
     const navigate = useNavigate()
@@ -64,6 +64,12 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow, 
     const [savePermission, setSavePermission] = useState(isAgentCanvas ? 'agentflows:create' : 'chatflows:create')
 
     const title = isAgentCanvas ? 'Agents' : 'Chatflow'
+
+    const handleViewModeChange = (event, newMode) => {
+        if (newMode !== null && onViewModeChange) {
+            onViewModeChange(newMode)
+        }
+    }
 
     const updateChatflowApi = useApi(chatflowsApi.updateChatflow)
     const canvas = useSelector((state) => state.canvas)
@@ -387,7 +393,50 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow, 
                         )}
                     </Box>
                 </Stack>
-                <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {/* View Mode Toggle */}
+                    {chatflow?.flowData && viewMode && onViewModeChange && (
+                        <ToggleButtonGroup
+                            value={viewMode}
+                            exclusive
+                            onChange={handleViewModeChange}
+                            aria-label="view mode"
+                            size="small"
+                            sx={{
+                                mr: 2,
+                                '& .MuiToggleButton-root': {
+                                    border: 'none',
+                                    borderRadius: '50%',
+                                    width: 40,
+                                    height: 40,
+                                    transition: 'all .2s ease-in-out',
+                                    '&.Mui-selected': {
+                                        backgroundColor: theme.palette.primary.main,
+                                        color: theme.palette.primary.contrastText,
+                                        '&:hover': {
+                                            backgroundColor: theme.palette.primary.dark
+                                        }
+                                    },
+                                    '&:not(.Mui-selected)': {
+                                        backgroundColor: theme.palette.secondary.light,
+                                        color: theme.palette.secondary.dark,
+                                        '&:hover': {
+                                            backgroundColor: theme.palette.secondary.dark,
+                                            color: theme.palette.secondary.light
+                                        }
+                                    }
+                                }
+                            }}
+                        >
+                            <ToggleButton value="editor" aria-label="editor mode" title="Editor Mode">
+                                <IconEdit size={20} />
+                            </ToggleButton>
+                            <ToggleButton value="renderer" aria-label="renderer mode" title="Renderer Mode">
+                                <IconEye size={20} />
+                            </ToggleButton>
+                        </ToggleButtonGroup>
+                    )}
+                    
                     {chatflow?.id && (
                         <ButtonBase title='API Endpoint' sx={{ borderRadius: '50%', mr: 2 }}>
                             <Avatar
@@ -508,7 +557,9 @@ CanvasHeader.propTypes = {
     handleDeleteFlow: PropTypes.func,
     handleLoadFlow: PropTypes.func,
     isAgentCanvas: PropTypes.bool,
-    isAgentflowV2: PropTypes.bool
+    isAgentflowV2: PropTypes.bool,
+    viewMode: PropTypes.oneOf(['editor', 'renderer']),
+    onViewModeChange: PropTypes.func
 }
 
 export default CanvasHeader

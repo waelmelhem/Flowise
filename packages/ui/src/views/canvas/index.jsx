@@ -27,6 +27,7 @@ import ConfirmDialog from '@/ui-component/dialog/ConfirmDialog'
 import ChatPopUp from '@/views/chatmessage/ChatPopUp'
 import VectorStorePopUp from '@/views/vectorstore/VectorStorePopUp'
 import { flowContext } from '@/store/context/ReactFlowContext'
+import FlowRenderer from '@/components/FlowRenderer'
 
 // API
 import nodesApi from '@/api/nodes'
@@ -98,6 +99,7 @@ const Canvas = () => {
     const [isUpsertButtonEnabled, setIsUpsertButtonEnabled] = useState(false)
     const [isSyncNodesButtonEnabled, setIsSyncNodesButtonEnabled] = useState(false)
     const [isSnappingEnabled, setIsSnappingEnabled] = useState(false)
+    const [viewMode, setViewMode] = useState('editor')
 
     const reactFlowWrapper = useRef(null)
 
@@ -576,13 +578,26 @@ const Canvas = () => {
                             handleDeleteFlow={handleDeleteFlow}
                             handleLoadFlow={handleLoadFlow}
                             isAgentCanvas={isAgentCanvas}
+                            viewMode={viewMode}
+                            onViewModeChange={setViewMode}
                         />
                     </Toolbar>
                 </AppBar>
                 <Box sx={{ pt: '70px', height: '100vh', width: '100%' }}>
-                    <div className='reactflow-parent-wrapper'>
-                        <div className='reactflow-wrapper' ref={reactFlowWrapper}>
-                            <ReactFlow
+                    {viewMode === 'renderer' && chatflow?.flowData ? (
+                        <FlowRenderer
+                            flowData={JSON.parse(chatflow.flowData)}
+                            readOnly={true}
+                            showMiniMap={true}
+                            showControls={true}
+                            showBackground={true}
+                            style={{ height: '100%' }}
+                            onNodeClick={(event, node) => console.log('Node clicked in renderer:', node)}
+                        />
+                    ) : (
+                        <div className='reactflow-parent-wrapper'>
+                            <div className='reactflow-wrapper' ref={reactFlowWrapper}>
+                                <ReactFlow
                                 nodes={nodes}
                                 edges={edges}
                                 onNodesChange={onNodesChange}
@@ -649,6 +664,7 @@ const Canvas = () => {
                             </ReactFlow>
                         </div>
                     </div>
+                    )}
                 </Box>
                 <ConfirmDialog />
             </Box>

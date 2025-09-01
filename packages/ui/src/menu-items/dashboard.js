@@ -23,7 +23,8 @@ import {
     IconLockCheck,
     IconFileDatabase,
     IconShieldLock,
-    IconListCheck
+    IconListCheck,
+    IconEye
 } from '@tabler/icons-react'
 
 // constant
@@ -51,7 +52,8 @@ const icons = {
     IconLockCheck,
     IconFileDatabase,
     IconShieldLock,
-    IconListCheck
+    IconListCheck,
+    IconEye
 }
 
 // ==============================|| DASHBOARD MENU ITEMS ||============================== //
@@ -276,6 +278,15 @@ const dashboard = {
                 //     breadcrumbs: true,
                 //     display: 'feat:files',
                 // },
+                {
+                    id: 'flowrenderer-demo',
+                    title: 'FlowRenderer Demo',
+                    type: 'item',
+                    url: '/flowrenderer-demo',
+                    icon: icons.IconEye,
+                    breadcrumbs: true,
+                    permission: 'chatflows:view'
+                },
                 {
                     id: 'account',
                     title: 'Account Settings',
